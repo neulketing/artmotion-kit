@@ -19,7 +19,7 @@ git clone https://github.com/neulketing/artmotion-kit ~/.claude/skills/artmotion
 
 <img src="https://raw.githubusercontent.com/neulketing/artmotion-kit/main/l10n/demo/demo_ko.gif" alt="Seurat, Van Gogh and Monet styles rendered in code, with Korean captions under each" width="100%" />
 
-<sub>Rendered with this kit: three style scenes (Seurat, Van Gogh, Monet) with Korean captions. 7 s, [MP4 with Korean narration](https://github.com/neulketing/artmotion-kit/raw/main/l10n/demo/demo_ko.mp4) from the macOS built-in voice.</sub>
+<sub>Rendered with this kit: three style scenes (Seurat, Van Gogh, Monet) with Korean captions. 7 s, [MP4 with Korean narration](https://github.com/neulketing/artmotion-kit/releases/download/l10n-demo-ko/demo_ko.mp4) from the macOS built-in voice.</sub>
 
 ## Why this fork
 

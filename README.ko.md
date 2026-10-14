@@ -20,7 +20,7 @@ git clone https://github.com/neulketing/artmotion-kit ~/.claude/skills/artmotion
 
 <img src="l10n/demo/demo_ko.gif" alt="쇠라, 고흐, 모네 양식을 코드로 그리고 각 화면 아래에 한국어 자막을 넣은 클립" width="100%" />
 
-<sub>이 키트로 렌더한 7초 클립. 쇠라·고흐·모네 양식 장면에 한국어 자막을 얹었습니다. [MP4](l10n/demo/demo_ko.mp4)에는 macOS 내장 음성(Yuna)으로 만든 한국어 내레이션이 들어 있습니다.</sub>
+<sub>이 키트로 렌더한 7초 클립. 쇠라·고흐·모네 양식 장면에 한국어 자막을 얹었습니다. [MP4](https://github.com/neulketing/artmotion-kit/releases/download/l10n-demo-ko/demo_ko.mp4)에는 macOS 내장 음성(Yuna)으로 만든 한국어 내레이션이 들어 있습니다.</sub>
 
 ## 왜 따로 만들었나
 

@@ -26,7 +26,7 @@
 | `l10n/scripts/lint.py` | Runs the upstream `storyboard_lint.py` on Korean or English storyboards |
 | `l10n/scripts/say.py` | Picks a Korean or US English macOS voice and calls the upstream `capabilities.py say --mode system` |
 | `l10n/tests/` | Unit test for the lint wrapper |
-| `l10n/demo/` | Korean demo: `eras_ko.js`, `y3_whiteboard.ko.json`, rendered `demo_ko.gif` / `demo_ko.mp4` and frames |
+| `l10n/demo/` | Korean demo: `eras_ko.js`, `y3_whiteboard.ko.json`, rendered `demo_ko.gif` and frames (the MP4 is a release asset: `l10n-demo-ko`) |
 
 ## China-specific dependencies and their replacements
 
