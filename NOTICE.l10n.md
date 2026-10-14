@@ -52,4 +52,6 @@ MIT, © 2026 neulketing. Same terms as the upstream `LICENSE`.
 
 ## Upstream CI
 
-The upstream "Media contracts" workflow is disabled in this repository. Its release check requires `release-manifest.json` to list every file in the git tree. This edition adds files under `l10n/` and does not edit upstream files, so the check cannot pass here. (Commit 2455e01 moved the demo MP4 to the `l10n-demo-ko` release; its message says the check passes, which is not the case.)
+The upstream "Media contracts" workflow (`.github/workflows/tests.yml`, unchanged) stays disabled here: its release check needs `release-manifest.json` to list every file in the tree, and this edition adds files under `l10n/` and `.github/` without editing upstream ones.
+
+"Media contracts (l10n)" (`.github/workflows/l10n-contracts.yml`) runs instead. It is the upstream workflow with one step swapped: `l10n/scripts/check_release_l10n.py` uses the upstream gate (`scripts/check_release.py`) to confirm that every file in the upstream manifest is byte-identical, that no file or commit since 2455e01 carries a secret or a forbidden file (such as an `.mp4` — the demo video is the `l10n-demo-ko` release asset), and it also runs `l10n/tests`.
