@@ -49,3 +49,7 @@ The subsets are modified versions under the OFL and are distributed only as part
 ## Localization layer license
 
 MIT, © 2026 neulketing. Same terms as the upstream `LICENSE`.
+
+## Upstream CI
+
+The upstream "Media contracts" workflow is disabled in this repository. Its release check requires `release-manifest.json` to list every file in the git tree. This edition adds files under `l10n/` and does not edit upstream files, so the check cannot pass here. (Commit 2455e01 moved the demo MP4 to the `l10n-demo-ko` release; its message says the check passes, which is not the case.)
