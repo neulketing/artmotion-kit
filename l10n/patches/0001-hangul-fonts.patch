@@ -1,0 +1,20 @@
+diff --git a/scripts/engine/lib/fonts.js b/scripts/engine/lib/fonts.js
+index c96e0f2..0f197f1 100644
+--- a/scripts/engine/lib/fonts.js
++++ b/scripts/engine/lib/fonts.js
+@@ -54,3 +54,15 @@ window.FONT_FACES = [
+   {family:'NotoSansSC', url:'lib/fonts/NotoSansSC-sub.woff', desc:{weight:'100 900'}},
+   {family:'NotoSerifSC', url:'lib/fonts/NotoSerifSC-sub.woff', desc:{weight:'200 900'}},
+ ];
++// ---- ArtMotion Kit (l10n/apply.sh): Hangul ----
++// Same family name + a Hangul unicode-range: the browser takes Hangul from these files and everything else
++// (Latin, digits, CJK punctuation) from the original face above. Korean text works with the existing family names.
++// Files: Noto Sans KR / Noto Serif KR / Gaegu, SIL OFL 1.1, KS X 1001 subsets (l10n/scripts/build_fonts.py).
++(() => {
++  const HANGUL = 'U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF';
++  const add = (family, file, desc = {}) => window.FONT_FACES.push({ family, url: 'lib/fonts/' + file, desc: { ...desc, unicodeRange: HANGUL } });
++  [[500, 'Medium'], [700, 'Bold'], [800, 'Heavy'], [900, 'Black']].forEach(([w, n]) => add('PuHui-' + n, `NotoSansKR-${w}.woff`));
++  add('NotoSansSC', 'NotoSansKR-var.woff', { weight: '100 900' });
++  add('NotoSerifSC', 'NotoSerifKR-var.woff', { weight: '200 900' });
++  add('LXGWWenKai-500', 'Gaegu-700.woff');   // whiteboard handwriting
++})();

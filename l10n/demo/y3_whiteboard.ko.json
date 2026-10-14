@@ -1,0 +1,17 @@
+{
+  "grammar": "y3_whiteboard",
+  "duration": 8,
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "theme": "chalk",
+  "cues": [
+    { "at": 0.0, "kind": "draw", "text": "25분", "data": { "icon": "clock" } },
+    { "at": 1.5, "kind": "point", "text": "이 시간에는 딱 한 가지 일만 합니다" },
+    { "at": 2.8, "kind": "draw", "text": "딴짓 금지", "data": { "icon": "target" } },
+    { "at": 4.1, "kind": "point", "text": "종이 울리면 5분 동안 쉬어요" },
+    { "at": 5.4, "kind": "draw", "text": "숨 고르기", "data": { "icon": "bulb" } },
+    { "at": 6.8, "kind": "point", "text": "네 번 돌고 나면 길게 한 번 쉽니다" },
+    { "at": 7.2, "kind": "highlight", "data": { "target": "draw", "index": 0 } }
+  ]
+}

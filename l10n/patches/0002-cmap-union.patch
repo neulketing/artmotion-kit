@@ -1,0 +1,15 @@
+diff --git a/scripts/engine/lib/util.js b/scripts/engine/lib/util.js
+index 0b3db42..0546c6d 100644
+--- a/scripts/engine/lib/util.js
++++ b/scripts/engine/lib/util.js
+@@ -71,8 +71,9 @@ async function readCmap(url) {
+   return set;
+ }
+ // 引擎 boot 里调用一次（字体加载之后）。读失败的字体记 console.error，不阻断启动。
++// l10n (ArtMotion Kit): one family can have several files (unicode-range), so cmaps are merged instead of overwritten
+ U.loadCmaps = async (faces = window.FONT_FACES || []) => {
+-  await Promise.all(faces.map(async f => { try { CMAPS[f.family] = await readCmap(f.url); } catch (e) { console.error(`读不了字体 ${f.family} 的 cmap：${e}`); } }));
++  await Promise.all(faces.map(async f => { try { const s = await readCmap(f.url); CMAPS[f.family] = CMAPS[f.family] ? new Set([...CMAPS[f.family], ...s]) : s; } catch (e) { console.error(`读不了字体 ${f.family} 的 cmap：${e}`); } }));
+ };
+ U.missingGlyphs = (font, text) => {
+   const fam = famOf(font), cm = CMAPS[fam];

@@ -1,0 +1,16 @@
+diff --git a/scripts/engine/lib/typo.js b/scripts/engine/lib/typo.js
+index da397e5..818ee7f 100644
+--- a/scripts/engine/lib/typo.js
++++ b/scripts/engine/lib/typo.js
+@@ -17,9 +17,10 @@ TY.text = (c, s, x, y, { size = 120, fam = 'PuHui-Black', color = '#111', align
+ };
+ TY.width = (c, s, size, fam = 'PuHui-Black', track = 0) => { c.save(); c.font = TY.font(size, fam); if (track) c.letterSpacing = track + 'px'; const w = c.measureText(s).width; c.restore(); return w; };
+ // 折行：按 maxW 把一段字拆成多行（中文逐字可断；英文/数字按词断；行首不放中文标点）。font 是 CSS 字体串
++// l10n (ArtMotion Kit): Hangul words stay whole and break at spaces, like English
+ TY.wrap = (c, text, maxW, font) => {
+   c.save(); if (font) c.font = font;
+-  const toks = String(text).match(/[A-Za-z0-9.,%+\-'’]+\s*|\s+|./gu) || [], lines = []; let cur = '';
++  const toks = String(text).match(/[A-Za-z0-9\u1100-\u11FF\u3130-\u318F\uAC00-\uD7A3.,%+\-'’]+\s*|\s+|./gu) || [], lines = []; let cur = '';
+   for (const tk of toks) {
+     if (tk === '\n') { lines.push(cur); cur = ''; continue; }
+     if (cur && c.measureText(cur + tk.trimEnd()).width > maxW && !/^[，。、：；！？」』）》,.!?)]$/.test(tk)) { lines.push(cur.trimEnd()); cur = tk.trimStart(); }
