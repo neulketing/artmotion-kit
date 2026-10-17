@@ -20,6 +20,10 @@ npx skills add alchaincyf/huashu-art-motion
 
 The skill instructions and most reference documents are in Chinese. This README provides an English guide; it does not translate the installed skill itself.
 
+## News
+
+- 2026-10: [Open Design](https://github.com/nexu-io/open-design), an open-source AI design workspace from nexu-io, lists huashu-art-motion as a design source in its [motion-design skill](https://github.com/nexu-io/open-design/blob/main/skills/motion-design/SOURCES.md) and includes an adapted copy at [skills/huashu-art-motion](https://github.com/nexu-io/open-design/tree/main/skills/huashu-art-motion), with the MIT license and upstream link kept. We're glad to see this approach to art animation used in another open-source project, and thank the Open Design team. More projects, feedback and contributions are welcome.
+
 ## Animation showcase
 
 ### Featured demo: Huashu enters Super Mario

@@ -12,6 +12,7 @@
   画风：一句话（一张风格卡或一种画法，全片只用这一种）
   色板：色板名（paper/poster/ink/navy/bauhaus/snow/wood/chalk，或中文名）或 3–6 个色值
   角色：无 ／ 只出手和背影 ／ 帧库 <路径>（AI 生帧）
+  平面卡通窄例外：画风以37_rick_morty或52_south_park开头，角色写「原创语义SVG…」
   允许蓝紫：<理由>（可选，只在用户点名要蓝紫时写）
 然后是一张 markdown 表（模板与示例见 references/镜头表模板.md），每行一镜，列：
   时间段 ｜ 画面里的物 ｜ 它在做什么 ｜ 镜头 ｜ 屏上字 ｜ 做法（可选，建议写）｜ 标签（可选）
@@ -75,6 +76,7 @@ LOCK = re.compile(r"^\s*[-*]?\s*(?:\*\*)?(画风|色板|角色|允许蓝紫)(?:\
 PALETTES = {"paper", "poster", "ink", "navy", "bauhaus", "snow", "wood", "chalk",
             "纸本", "海报黄", "深墨", "海军", "包豪斯", "雪原", "暖木", "黑板"}
 HEX = re.compile(r"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b")
+FLAT_STYLE = re.compile(r"^(?:37_rick_morty|52_south_park)(?=$|[\s：:，,；;·（(])", re.I)
 CHAR_BAD = re.compile(r"代码画|手写|svg|SVG|Q\s*版|q\s*版|小人|机器人|火柴人|卡通人")
 CHAR_FRAMES = re.compile(r"帧库|frames|\.png|/")
 CHAR_NONE = re.compile(r"无|没有|不出人|不出脸|只出手|手|背影|剪影")
@@ -433,10 +435,14 @@ def lint(text, script=None):
             table.append((YELLOW, "⑬色板", f"色板「{pal}」不是色板名也没写色值", "写 references/色板.md 里的名字，或 3–6 个 #色值"))
     ch = lock.get("角色", "")
     frames = bool(ch and CHAR_FRAMES.search(ch))
-    if ch and CHAR_BAD.search(ch) and not frames:
+    # Only the explicitly selected, documented flat-character routes; y4 still needs frames.
+    flat_svg = bool(FLAT_STYLE.search(lock.get("画风", ""))
+                    and ch.startswith("原创语义SVG")
+                    and not re.search(r"真人|写实", ch))
+    if ch and CHAR_BAD.search(ch) and not (frames or flat_svg):
         table.append((RED, "⑭角色", f"角色写的是「{ch}」：代码画的小人和机器人已停用", "有生图能力就 AI 生帧（references/10-角色.md），没有就只出手、背影、剪影，或干脆不出人"))
     for r in rows:
-        if OBJ_CHAR.search(r["obj"]) and not frames:
+        if OBJ_CHAR.search(r["obj"]) and not (frames or flat_svg):
             r["issues"].append((RED, "⑭角色", f"物列里有「{OBJ_CHAR.search(r['obj']).group(0)}」，角色却不是帧库",
                                 "这一镜换成手、背影或一个物；要出角色先按 references/角色精细度.md 做帧库"))
         if OBJ_FACE.search(r["obj"] + r["act"]):

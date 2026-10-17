@@ -1,6 +1,7 @@
 // 参数化片段运行时：一份 spec（JSON）→ 一段时长严格等于 spec.duration 的动画。给口播视频管线当「动画段」用。
 // 契约见 references/09-视频动画语法.md「片段契约」。和 engine.js 的区别：没有段落表/转场，一个语法一个 draw(c, t, ctx)，画布尺寸从 spec 读（竖屏也行）。
 //
+// spec.finish（可选）：成片质感层，预设 soft / film / punch / clean 或对象，见 lib/finish.js；alpha 模式忽略。
 // spec = { grammar, duration, fps=30, width=1920, height=1080, safe?: {top,bottom,left,right（px，留给字幕/平台 UI）, fill?（让开的边涂这个色）}, theme?, alpha?, data?, cues: [{at, kind, text?, sub?, data?, image?, frames?, fps?, dur?}] }
 // spec.theme：全片共用的色板（lib/palettes.js）——名字（paper poster ink navy bauhaus snow wood chalk）、{name, 要覆盖的键}、或完整 6 键 {bg, surface, ink, sub, accent, accent2}。
 //   解析成 ctx.pal（完整 6 键＋name），各语法按它上色；名字写错 / 缺键 → 启动失败。不写 → ctx.pal = null，各语法用自己的默认配色。
@@ -53,6 +54,8 @@ async function boot() {
   // 主题色板：在加载素材之前核，写错就别白等图片
   let pal = null;
   if (!(G.legacyTheme && G.legacyTheme(spec.theme))) { try { pal = PAL.resolve(spec.theme); } catch (e) { return fail(e.message); } }
+  // 成片质感层（spec.finish）：写错预设名就别白等图片
+  let fin = null; try { fin = FINISH.resolve(spec.finish); } catch (e) { return fail(e.message); }
   // 图片
   const IMG = {}, urls = new Set();
   for (const q of (spec.cues || [])) {
@@ -90,7 +93,7 @@ async function boot() {
   // safe.fill：让开的边涂成这个颜色（竖屏片把图表做成和相邻 contain 素材同一块「卡片」，外面是片子的底色）；透明模式下不涂
   const band = (safe.fill && !spec.alpha) ? (cc => { cc.fillStyle = safe.fill; const { top: t0, bottom: b0, left: l0, right: r0 } = safe;
     if (t0) cc.fillRect(0, 0, W, t0); if (b0) cc.fillRect(0, H - b0, W, b0); if (l0) cc.fillRect(0, 0, l0, H); if (r0) cc.fillRect(W - r0, 0, r0, H); }) : null;
-  window.renderFrame = t => { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, H); c.save(); G.draw(c, t, ctx); c.restore(); if (band) band(c); };
+  window.renderFrame = t => { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, H); c.save(); G.draw(c, t, ctx); c.restore(); if (fin && !spec.alpha) FINISH.apply(c, t, fin, W, H, FPS); if (band) band(c); };
   window.prepare = async () => {};
   window.__ready = true;
   window.renderFrame(0);

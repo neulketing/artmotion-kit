@@ -307,3 +307,30 @@ class CameraRhythm(unittest.TestCase):
 
     def test_inward_synonyms(self):
         self.assertIn("⑮推近", self.issues(self.lint(["慢推", "推进", "zoom in", "停", "拉远", "横移"])))
+
+
+class FlatStyleCharacters(unittest.TestCase):
+    HEAD = StyleLock.HEAD
+    ROWS = "| 0–3 | 原创卡通人 | 推开门 | 停 | | scenes/a.js |\n| 3–6 | 工具箱 | 被放到地上 | 横移 | | scenes/a.js |\n"
+
+    def role_errors(self, style, role, rows=None):
+        result = SL.lint(f"画风：{style}\n色板：paper\n角色：{role}\n\n" + self.HEAD + (rows or self.ROWS))
+        issues = result["table"] + [issue for row in result["rows"] for issue in row["issues"]]
+        return [i for i in issues if i[0] == SL.RED and i[1] == "⑭角色"]
+
+    def test_explicit_flat_svg_routes(self):
+        for style in ("52_south_park 南方公园式数字剪纸", "37_rick_morty Rick & Morty式平面卡通"):
+            with self.subTest(style=style):
+                self.assertFalse(self.role_errors(style, "原创语义SVG纸片角色"))
+
+    def test_other_styles_and_realistic_roles_still_blocked(self):
+        for style, role in (("雷诺阿", "原创语义SVG角色"),
+                            ("52_south_park_extra", "原创语义SVG角色"),
+                            ("52_south_park", "代码画Q版小人"),
+                            ("52_south_park", "原创语义SVG写实真人")):
+            with self.subTest(style=style, role=role):
+                self.assertTrue(self.role_errors(style, role))
+
+    def test_y4_still_requires_frames(self):
+        rows = self.ROWS.replace("scenes/a.js", "y4 片段 a.json")
+        self.assertTrue(self.role_errors("52_south_park", "原创语义SVG纸片角色", rows))

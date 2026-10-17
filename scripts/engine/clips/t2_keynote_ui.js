@@ -194,13 +194,13 @@ function drawFull(c, s, t, ctx, acc) {
     g.save(); g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 40 * u; g.shadowOffsetY = 14 * u; g.fillStyle = '#000'; g.fillRect(f.x, f.y, f.w, f.h); g.restore();
     if (s.geo.fit === 'cover') MD.cover(g, im, { ...s.geo.box, fx: s.geo.fx, fy: s.geo.fy });
     else g.drawImage(im, f.x, f.y, f.w, f.h);
-    hlOn(g, cd, f, t, ctx, acc, u, s.next);
+    hlOn(g, cd, f, t, ctx, acc, u, s.next, cam.z * slam);
   });
   // 标签：屏幕层，不跟镜头；压在内容框左下角（截图自己的标题多在上面，不挡它），at 这一帧出现、12fps 打字
   const size = (ctx.portrait ? 54 : 46) * u, ss = size * 0.66, lx = ctx.box.x + 56 * u, yb = ctx.box.y + ctx.box.h - (ctx.portrait ? 110 : 60) * u;
   const ySub = yb - ss * 0.75, yMain = q.sub ? ySub - ss * 0.75 - 12 * u - size * 0.75 : yb - size * 0.75;
-  if (q.text) MD.label(c, q.text, lx, yMain, { t, at: q.at, size, bg: T.labBg, fg: T.labFg });
-  if (q.sub) MD.label(c, q.sub, lx, q.text ? ySub : yb - ss * 0.75, { t, at: q.at + (q.text ? 0.25 : 0), size: ss, fam: 'PuHui-Bold', bg: acc, fg: onAcc(acc) });
+  if (q.text) MD.label(c, q.text, lx, yMain, { t, at: q.at, size, maxW: ctx.box.w - 112 * u, bg: T.labBg, fg: T.labFg });
+  if (q.sub) MD.label(c, q.sub, lx, q.text ? ySub : yb - ss * 0.75, { t, at: q.at + (q.text ? 0.25 : 0), size: ss, maxW: ctx.box.w - 112 * u, fam: 'PuHui-Bold', bg: acc, fg: onAcc(acc) });
   for (const qn of s.nums || []) overNumber(c, qn, t, ctx);
   c.restore();
 }
@@ -215,10 +215,10 @@ function overNumber(c, q, t, ctx) {
   c.save(); c.translate(cx, my); c.scale(z, z); c.translate(-cx, -my);
   c.font = `600 ${size}px ${SANSB}`; track(c, size, -0.03); c.fillStyle = T.pal ? (PAL.dark(T.pal) ? T.pal.ink : T.pal.surface) : '#ffffff'; c.shadowColor = 'rgba(0,0,0,0.6)'; c.shadowBlur = 30 * u;
   TY.tabular(c, fmtNum(nd, k), cx, cy, { align: 'center' }); c.restore();
-  if (cap) MD.label(c, cap, cx, cy + 110 * u, { t, at: t0 + 0.2, size: (ctx.portrait ? 54 : 48) * u, align: 'center', bg: T.labBg, fg: T.labFg });
+  if (cap) MD.label(c, cap, cx, cy + 110 * u, { t, at: t0 + 0.2, size: (ctx.portrait ? 54 : 48) * u, maxW: bx.w * 0.92, align: 'center', bg: T.labBg, fg: T.labFg });
 }
 // 截图上的 highlight：at 这一帧框开始弹出，其余压暗，一道光扫过框内；只认落在这一屏在屏期间的 highlight
-function hlOn(g, cd, f, t, ctx, acc, u, until) {
+function hlOn(g, cd, f, t, ctx, acc, u, until, z = 1) {   // z：这一刻相机的放大倍数（满幅模式画在被放大的世界里，标签要按它反算，不然长标签被放大出画）
   const q = cd.q;
   for (const qh of ctx.of('highlight')) {
     if (qh.at < q.at || qh.at >= until || !qh.data || !qh.data.rect) continue;
@@ -228,8 +228,11 @@ function hlOn(g, cd, f, t, ctx, acc, u, until) {
     g.save(); g.strokeStyle = acc; g.lineWidth = 5 * u; if (!T.pal) { g.shadowColor = acc; g.shadowBlur = 18 * u * 0.85; } g.globalAlpha = clamp(hl / 0.15);   // 全片色板：框不发光
     g.beginPath(); g.roundRect(R.x - e, R.y - e, R.w + 2 * e, R.h + 2 * e, 10 * u); g.stroke(); g.restore();
     UI.sheen(g, UI.rrPath(R.x, R.y, R.w, R.h, 10 * u), MO.seg(hl, 0.25, 1.0), { x0: R.x, x1: R.x + R.w, width: Math.max(60 * u, R.w * 0.2), alpha: 0.35 });
-    if (qh.text) { g.font = `600 ${30 * u}px ${ZHB}`; const lw = g.measureText(qh.text).width + 36 * u, ly = R.y + R.h + 16 * u + 48 * u > f.y + f.h ? R.y - 64 * u : R.y + R.h + 16 * u;
-      g.save(); g.globalAlpha = clamp((hl - 0.15) / 0.25); g.fillStyle = acc; g.beginPath(); g.roundRect(clamp(R.x, f.x, f.x + f.w - lw), ly, lw, 48 * u, 24 * u); g.fill(); g.fillStyle = onAcc(acc); g.textBaseline = 'middle'; g.fillText(qh.text, clamp(R.x, f.x, f.x + f.w - lw) + 18 * u, ly + 25 * u); g.restore(); }
+    if (qh.text) {
+      const k = clamp(30 * u * z, 30 * u, 52 * u) / z, sz = k, lh = 48 * u * k / (30 * u), pd = 18 * u * k / (30 * u);   // 屏幕上的字大小夹在 30–52u：推近后也不会越放越大
+      const fl = TY.fitFloor(g, qh.text, Math.min(f.w * 0.9, ctx.W * 0.84 / z) - 2 * pd, sz, 'PuHui-Bold', { maxLines: 1, floor: sz * 0.62 }), txt = fl.lines[0] || '';
+      g.font = `600 ${fl.size}px ${ZHB}`; const lw = g.measureText(txt).width + 2 * pd, ly = R.y + R.h + 16 * u / z + lh > f.y + f.h ? R.y - lh - 16 * u / z : R.y + R.h + 16 * u / z, lx = clamp(R.x, f.x, Math.max(f.x, f.x + f.w - lw));
+      g.save(); g.globalAlpha = clamp((hl - 0.15) / 0.25); g.fillStyle = acc; g.beginPath(); g.roundRect(lx, ly, lw, lh, lh / 2); g.fill(); g.fillStyle = onAcc(acc); g.textBaseline = 'middle'; g.fillText(txt, lx + pd, ly + lh / 2 + 1); g.restore(); }
   }
 }
 // 截图卡的屏幕几何
@@ -283,9 +286,9 @@ function imgContent(g, cd, Bw, Bh, t, ctx, acc) {
       if (q.sub) { const sl = fitB(g, q.sub, tw, 34 * u, 'PuHui-Medium', { maxLines: tl.lines.length > 1 ? 1 : 2, min: 0.75 }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = T.body;
         sl.lines.forEach((ln, k) => g.fillText(ln, tx, hp + tl.size * 0.85 + (tl.lines.length - 1) * tl.size * 1.2 + 24 * u + sl.size + k * sl.size * 1.35)); }
     } else {
-    const tl = TY.fit(g, q.text || '', tw, 46 * u, 'PuHui-Bold', { maxLines: 1, weight: '600 ' });
+    const tl = TY.fitFloor(g, q.text || '', tw, 46 * u, 'PuHui-Bold', { maxLines: 1, weight: '600 ', floor: 30 * u });
     g.font = `600 ${tl.size}px ${ZHB}`; g.fillStyle = T.head; g.fillText(tl.lines[0] || '', tx, hp + (q.sub ? 32 * u : 48 * u));
-    if (q.sub) { const sl = TY.fit(g, q.sub, tw, 28 * u, 'PuHui-Medium', { maxLines: 1 }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = T.body2; g.fillText(sl.lines[0] || '', tx, hp + 74 * u); }
+    if (q.sub) { const sl = TY.fitFloor(g, q.sub, tw, 28 * u, 'PuHui-Medium', { maxLines: 1, floor: 20 * u }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = T.body2; g.fillText(sl.lines[0] || '', tx, hp + 74 * u); }
     }
   }
   const [iw, ih] = MD.size(cd.im), f = CLIP.fit(iw, ih, I.x, I.y, I.w, I.h);

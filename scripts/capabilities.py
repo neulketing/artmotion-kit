@@ -337,6 +337,8 @@ def run_say(args, config):
             args.voice = speaker(config, args.voice)
             opts = config['provider_options']['volcengine']
             args.model = args.model or opts['model']
+            from voice_review import review_status
+            print(json.dumps({'model_review': review_status('volcengine', args.model, getattr(args, 'config', None))}, ensure_ascii=False), file=sys.stderr)
             args.speech_rate = opts['speech_rate'] if args.speech_rate is None else args.speech_rate
             args.no_fidelity = not opts['tone_fidelity'] if args.no_fidelity is None else args.no_fidelity
             koubo.cmd_say(args)
@@ -403,6 +405,9 @@ def main():
         result = resolve(config, args.mode, args.audio)
         result['revision'] = config.get('revision', 0)
         result['parameters'] = config['provider_options']['volcengine'] if result.get('provider') == 'volcengine' else {}
+        if result.get('provider') == 'volcengine':
+            from voice_review import review_status
+            result['model_review'] = review_status('volcengine', result['parameters']['model'], path)
         if args.explain:
             result['sources'] = sources
         print(json.dumps(result, ensure_ascii=False, indent=2))

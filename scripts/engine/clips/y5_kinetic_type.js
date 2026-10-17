@@ -27,7 +27,7 @@ return {
     pages = ctx.of('title', 'point', 'number').map((q, i) => {
       const num = q.kind === 'number', nd = q.data || {};
       const text = num ? (nd.prefix || '') + TY.fmt(nd.value || 0, nd.decimals ?? 0) + (nd.suffix || '') : (q.text || '');
-      const S0 = (ctx.portrait ? 250 : 300) * u;
+      const S0 = (ctx.portrait ? 380 : 300) * u;
       let f = TY.fit(g, text, W * 0.86, S0, 'PuHui-Black', { maxLines: 1, min: 0.55, soft: true });   // 先缩字号放一行，再不行折两行；单个长英文词再缩也要放得下
       if (!f.ok) f = num ? TY.fit(g, text, W * 0.86, S0, 'PuHui-Black', { maxLines: 1 })   // 数字不折行（滚动时逐字变宽，折开会跳）：只缩字号
                      : TY.fit(g, text, W * 0.86, S0, 'PuHui-Black', { maxLines: 2, min: 0.3, balance: true });
@@ -75,7 +75,8 @@ function drawPage(c, P, t, ctx) {
   const by0 = ctx.safe.top, by1 = H - ctx.safe.bottom - (ctx.portrait && LIST ? 220 * u : 0), cyB = ctx.portrait ? by0 + (by1 - by0) * 0.44 : (by0 + by1) / 2;
   const blockH = lines.length * lh + (sub ? subSz * (0.6 + subL.length * 1.15) : 0), y0 = cyB - blockH / 2 + size * 0.82;
   // 标签（左上）
-  const label = q.data && q.data.label;
+  let label = q.data && q.data.label;
+  if (label) { const lf = TY.fitFloor(c, label, W * (ctx.portrait ? 0.84 : 0.5) - (ctx.portrait ? 80 : 140) * u, (ctx.portrait ? 56 : 52) * u, 'PuHui-Bold', { maxLines: 1, floor: 34 * u }); label = lf.lines[0] || ''; }
   if (label) TY.rise(c, label, (ctx.portrait ? 80 : 140) * u, ctx.safe.top + (ctx.portrait ? 260 : 210) * u, MO.at(lt, 0, 0.3), { size: (ctx.portrait ? 56 : 52) * u, fam: 'PuHui-Bold', color: fg, track: 6 * u, ...(ctx.alpha ? { stroke: '#111', strokeW: 6 * u } : {}) });
   // 高亮（画在字后面）
   const hq = ctx.of('highlight').filter(h => h.at >= (P.num ? P.show : q.at) - 1e-6).find(h => { const nx = ctx.of('title', 'point', 'number').find(z => z.at > q.at); return !nx || h.at < nx.at; });

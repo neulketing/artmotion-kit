@@ -15,7 +15,7 @@
 //   MD.print(c, src, w, h, o)                     冲印件：白边＋旧纸色＋投影＋胶带，原点在冲印件中心（调用方先 translate/rotate）
 //       o = { border=16·u, crop, fx, fy（按焦点 cover 进 w×h）, tape=true, caption（白边下方小字）, polaroid=false（底边加宽、caption 写在底边里）,
 //             shadow=true, key（给了 key 且素材是静态图就缓存成位图）}
-//   MD.label(c, text, x, y, o)                    黑底撕边标签：o = { size=48·u, fam='PuHui-Heavy', bg='#191817', fg='#f3efe6', align='left'|'center'|'right',
+//   MD.label(c, text, x, y, o)                    黑底撕边标签：o = { size=48·u, maxW(限宽，超了先缩后截断), fam='PuHui-Heavy', bg='#191817', fg='#f3efe6', align='left'|'center'|'right',
 //             t, at（at 这一帧出现：先 1.12 倍一拍再落定，字按 rate 字/秒、12fps 打出；不给 t 就直接画完整的）, rate=14, r（旋转）}
 //       返回 {w, h}
 //   MD.frameAt(frames, lt, fps=30, loop=false)    帧序列（图片数组）在片内时间 lt 的那一帧；缺帧 → throw
@@ -83,9 +83,16 @@ MD.print = (c, src, w, h, o = {}) => {
 const labCache = {};
 MD.label = (c, text, x, y, o = {}) => {
   text = String(text ?? ''); if (!text) return { w: 0, h: 0 };
-  const u = u0(), size = o.size ?? 48 * u, fam = o.fam || 'PuHui-Heavy', bg = o.bg || '#191817', fg = o.fg || '#f3efe6';
+  const u = u0(), fam = o.fam || 'PuHui-Heavy', bg = o.bg || '#191817', fg = o.fg || '#f3efe6';
+  let size = o.size ?? 48 * u;
   if (o.t != null && o.at != null && o.t < o.at) return { w: 0, h: 0 };
   c.save(); c.font = `${size}px "${fam}"`;
+  if (o.maxW) {                                  // 限宽：先把字缩到 62% 为止，还放不下就截断加「…」，标签不许比画面宽
+    const full = c.measureText(text).width + size * 0.84;
+    if (full > o.maxW) { size = Math.max(size * 0.62, size * o.maxW / full); c.font = `${size}px "${fam}"`;
+      const cs = [...text]; while (cs.length > 1 && c.measureText(cs.join('')).width + size * 0.84 > o.maxW) cs.pop();
+      if (cs.length < [...text].length) text = cs.join('').trimEnd() + '…'; }
+  }
   const tw = c.measureText(text).width, padX = size * 0.42, w = Math.round(tw + padX * 2), h = Math.round(size * 1.5);
   const key = `${text}|${size}|${fam}|${bg}`;
   const sp = labCache[key] || (labCache[key] = (() => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d');

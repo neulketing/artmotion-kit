@@ -17,7 +17,7 @@ import spec_assets
 from playwright.sync_api import sync_playwright
 
 ap = argparse.ArgumentParser()
-ap.add_argument('--out', required=True)
+ap.add_argument('--out', help='输出文件（--audit 时可不写）')
 ap.add_argument('--audio')
 ap.add_argument('--fps', type=int, default=60)
 ap.add_argument('--from', dest='t0', type=float, default=0)
@@ -31,7 +31,9 @@ ap.add_argument('--spec', help='参数化片段 spec.json（走 clip.html，不�
 ap.add_argument('--alpha', action='store_true', help='--spec 时出 ProRes 4444 带透明（背景不画）')
 ap.add_argument('--width', type=int, help='整片模式的画布宽（竖屏 1080）；--spec 时宽高从 spec 读，写了这个会覆盖 spec')
 ap.add_argument('--height', type=int, help='整片模式的画布高（竖屏 1920）')
+ap.add_argument('--audit', nargs='?', const='-', help='版面审计（只配 --spec）：不出视频，每 0.25 秒采一帧，记录主画布上每次 fillText 的位置/字号/透明度，查出界、字太小、文字互相压；可跟一个 JSON 输出路径')
 a = ap.parse_args()
+if not a.out and not a.audit: ap.error('--out 必填（除非 --audit）')
 
 root = Path(__file__).parent
 spec, ALLOWED = None, set()
@@ -49,6 +51,28 @@ if spec and float(spec.get('duration', 0)) > 8:
                  '!! 拆成多镜：每镜 2–6 秒、换语法或换做法（scenes、真实素材），再拼接（SKILL.md 轨道档第 3–4 步）。\n'
                  '!! 口播管线里确实要一段长片段的，可以忽略这条。\n' + '!' * 72 + '\n')
     print(LONG_CLIP, file=sys.stderr, flush=True)
+
+AUDIT_JS = r"""
+(() => {
+  window.__AUDIT = []; window.__auditT = 0;
+  const P = CanvasRenderingContext2D.prototype;
+  for (const fn of ['fillText', 'strokeText']) {
+    const orig = P[fn];
+    P[fn] = function (text, x, y) {
+      try {
+        if (fn === 'fillText' && this.canvas === window.__canvas && String(text).trim()) {
+          const m = this.measureText(String(text)), tf = this.getTransform(), l = m.actualBoundingBoxLeft, r = m.actualBoundingBoxRight, as = m.actualBoundingBoxAscent, ds = m.actualBoundingBoxDescent;
+          const pts = [[x - l, y - as], [x + r, y - as], [x + r, y + ds], [x - l, y + ds]].map(q => [tf.a * q[0] + tf.c * q[1] + tf.e, tf.b * q[0] + tf.d * q[1] + tf.f]);
+          const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), px = parseFloat(this.font) * Math.hypot(tf.a, tf.b);
+          window.__AUDIT.push({ t: window.__auditT, text: String(text), x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), px, a: this.globalAlpha });
+        }
+      } catch (e) {}
+      return orig.apply(this, arguments);
+    };
+  }
+})();
+"""
+
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *x): pass
     def translate_path(self, path):
@@ -77,6 +101,7 @@ with sync_playwright() as p:
     if spec:
         pg.set_viewport_size({'width': spec.get('width', 1920), 'height': spec.get('height', 1080)})
         pg.add_init_script('window.CLIP_SPEC = ' + json.dumps(spec, ensure_ascii=False) + ';')
+        if a.audit: pg.add_init_script(AUDIT_JS)
         pg.goto(f'http://127.0.0.1:{port}/clip.html?render=1')
     else:
         if a.width or a.height:
@@ -89,6 +114,14 @@ with sync_playwright() as p:
     if a.t1 is None: a.t1 = pg.evaluate('window.__total')
     if spec: a.fps = spec.get('fps', 30); a.t0 = 0; a.t1 = spec['duration']
     grab = '''async (t)=>{ await window.prepare(t); window.renderFrame(t); return window.__canvas.toDataURL('image/png').split(',')[1]; }'''
+
+    if a.audit:
+        if not spec: raise SystemExit('--audit 只配 --spec')
+        import audit_clip
+        rep = audit_clip.run(pg, spec, grab)
+        if a.audit != '-': Path(a.audit).write_text(json.dumps(rep, ensure_ascii=False, indent=1))
+        b.close(); srv.shutdown(); srv.server_close()
+        sys.exit(1 if rep['red'] else 0)
     if a.solo:
         grab = '''async (t)=>{ window.renderSolo(%s, t, {counter: %s}); return window.__canvas.toDataURL('image/png').split(',')[1]; }''' % (repr(a.solo), 'false' if a.no_counter else 'true')
     if a.stills:

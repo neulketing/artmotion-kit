@@ -48,6 +48,7 @@ return {
     const y0 = safe.top + (ctx.of('title').length ? (ctx.portrait ? 300 : 210) * u : 60 * u), y1 = H - safe.bottom - 40 * u;
     const R = (ctx.portrait ? 160 : 140) * u, cx = W / 2, cy = (y0 + y1) / 2 + (ctx.portrait ? 0 : 30 * u);
     S = { cx, cy, R, stars: Array.from({ length: 160 }, () => ({ x: r() * W * 1.4 - W * 0.2, y: r() * H * 1.4 - H * 0.2, r: (0.8 + r() * r() * 3) * u, ph: r() * 6.28, sp: 1 + r() * 2.5 })),
+      bokeh: Array.from({ length: 10 }, () => ({ x: r() * W * 1.3 - W * 0.15, y: r() * H * 1.3 - H * 0.15, r: (60 + r() * 150) * u, ph: r() * 6.28, a: 0.035 + r() * 0.04 })),
       motes: Array.from({ length: 24 }, () => ({ x: r() * W, y: r() * H, ph: r() * 6.28, d: 0.8 + r() * 0.5, s: (2 + r() * 3) * u })) };
     // 分层：enter 把后面的 point 放进新的一层
     const cs0 = styleFor(ctx.data.center || '', ctx.data.center_style || {});
@@ -64,6 +65,7 @@ return {
     const rx = ctx.portrait ? W * 0.34 : Math.min(W * 0.32, 640 * u), ryHalf = Math.min(y1 - y0, H) * (ctx.portrait ? 0.3 : 0.42), ryRing = Math.min((y1 - y0) * (ctx.portrait ? 0.34 : 0.36), y1 - cy - lab, cy - y0 - 60 * u);
     levels.forEach((L, li) => {
       const n = L.pts.length, ring = n >= 4;
+      L.orbit = { rx, ry: ring ? ryRing : ryHalf, ring };
       L.nodes = L.pts.map((q, i) => { const ang = ring ? Math.PI + i / n * Math.PI * 2 : Math.PI + (i + 0.5) / n * Math.PI;
         const ry = ring ? ryRing : ryHalf; return { q, i, x: cx + Math.cos(ang) * rx, y: cy + Math.sin(ang) * ry, col: (q.data && q.data.color) || ACC[(i + li * 2) % ACC.length] }; });
       if (L.exit) { const nd = L.exit.idx != null ? L.nodes[L.exit.idx] : L.nodes.filter(z => z.q.at <= L.exit.at).pop() || L.nodes[L.nodes.length - 1];
@@ -115,12 +117,16 @@ function drawLevel(c, k, t, ctx) {
   if (!ctx.alpha) {
     c.fillStyle = P.sky.length > 1 ? TOON.vgrad(c, 0, H, P.sky) : P.sky[0]; c.fillRect(0, 0, W, H);
     const sa = PL ? 0.35 : 1;                                             // 色板底上星点只是一层很淡的纹理
+    CAM.layer(c, cam, 0.12, g => { for (const b of S.bokeh) { const k = 0.75 + 0.25 * Math.sin(t * 0.5 + b.ph); const bx = b.x + Math.sin(t * 0.2 + b.ph) * 14 * u, a = b.a * k * (PL ? 0.9 : 1.6), rgb = (PL ? PAINT.hex(P.star) : [125, 211, 220]).slice(0, 3).map(Math.round).join(','), gr = g.createRadialGradient(bx, b.y, b.r * 0.15, bx, b.y, b.r); gr.addColorStop(0, `rgba(${rgb},${a * 0.35})`); gr.addColorStop(0.8, `rgba(${rgb},${a * 0.55})`); gr.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gr; g.beginPath(); g.arc(bx, b.y, b.r, 0, 7); g.fill(); } });
     CAM.layer(c, cam, 0.05, g => { for (const s of S.stars) { g.globalAlpha = sa * (0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * s.sp + s.ph))); g.fillStyle = P.star; g.beginPath(); g.arc(s.x, s.y, s.r, 0, 7); g.fill(); } g.globalAlpha = 1; });
   }
   // highlight 生效时：被推近的节点亮，其余节点和标签暗下去
   const hNow = [...L.hls].reverse().find(h => t >= h.at && h.node), dimK = hNow ? MO.smooth(clamp((t - hNow.at) / 0.6)) : 0;
   const col = L.col, st = L.style, pull = L.from && t < L.end0 ? MO.smooth(clamp(((t - L.start) / (L.end0 - L.start) - 0.45) / 0.45)) : 1;   // 刚钻进来：先是满屏纯色，名字和环在拉出后半段才出来
   CAM.layer(c, cam, 1, g => {
+    // 节点轨道：一道很淡的虚线椭圆，让点位有「绕着中心」的结构（节点越多越像一圈，≤3 个是上半弧）
+    if (L.orbit && L.nodes.length) { const o = L.orbit, a0 = L.orbit.ring ? 0 : Math.PI, a1 = L.orbit.ring ? Math.PI * 2 : Math.PI * 2, show = MO.cubicOut(clamp(ctx.lt(t, L.nodes[0].q.at) / 0.8));
+      g.save(); g.globalAlpha = 0.5 * show * (1 - 0.6 * dimK); g.strokeStyle = P.line; g.lineWidth = 2 * u; g.setLineDash([2 * u, 14 * u]); g.lineCap = 'round'; g.beginPath(); g.ellipse(cx, cy, o.rx, o.ry, 0, a0, a0 + (a1 - a0) * show); g.stroke(); g.restore(); }
     // 连线＋信号脉冲（flow：中心→1→2→3 串成链，信号依次流过）
     L.nodes.forEach((nd, i) => {
       const l = ctx.lt(t, nd.q.at); if (l <= 0) return;
@@ -132,12 +138,12 @@ function drawLevel(c, k, t, ctx) {
       for (let kk = 0; kk < 3; kk++) { if (l < 0.4) break; const q = flow ? ((t * 0.7 - i * 0.33 + kk / 3) % 1 + 1) % 1 : ((l * 0.8 + kk / 3) % 1); const x = lerp(from.x, nd.x, q), y = lerp(from.y, nd.y, q); if (!PL) TOON.glow(g, x, y, 20 * u, P.pulse, 0.6 * (1 - 0.7 * dimK)); g.fillStyle = PL ? P.pulse : P.pulseCore; g.beginPath(); g.arc(x, y, (PL ? 7 : 5) * u, 0, 7); g.fill(); }
     });
     // 中心物：双色分面＋柔光（形状、颜色来自 data.center_style 或按名字生成）；可选轨道环；有 data.image 就把图裁进形状里
-    const shape = shapePath(st.shape, cx, cy, R);
+    const breath = 1 + 0.018 * Math.sin(t * 1.7), shape = shapePath(st.shape, cx, cy, R * breath);
     if (!PL) TOON.glow(g, cx, cy, R * 2.4, light(col), 0.28);
     TOON.flat(g, shape, col, dark(col), light(col), [-18 * u, 14 * u], [-6 * u, 5 * u]);
     if (L.img) { g.save(); g.clip(shapePath(st.shape, cx, cy, R * 0.9)); MD.cover(g, L.img, { x: cx - R, y: cy - R, w: 2 * R, h: 2 * R }); g.restore(); }
     if (st.ring) { g.save(); g.globalAlpha = pull; g.strokeStyle = P.ring; g.lineWidth = 6 * u; g.beginPath(); g.ellipse(cx, cy, R * 1.55, R * 0.35, -0.25, Math.PI * 1.05, Math.PI * 1.95); g.stroke(); g.restore(); }
-    if (L.center && !L.img) { const f = TY.fit(g, L.center, R * 1.7, 56 * u, 'PuHui-Heavy', { maxLines: 2, min: 0.5, balance: true });   // 名字放进中心物里：先缩字号，再折两行
+    if (L.center && !L.img) { const f = TY.fitFloor(g, L.center, R * 1.7, 56 * u, 'PuHui-Heavy', { maxLines: 3, floor: 30 * u, balance: true });   // 名字放进中心物里：先缩字号到下限，再折行，再截断
       g.save(); g.globalAlpha = pull; g.font = `${f.size}px "PuHui-Heavy"`; g.fillStyle = PL ? PAL.on(col, [PL.surface, PL.ink, PL.bg]) : '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
       f.lines.forEach((ln, i) => g.fillText(ln, cx, cy + (i - (f.lines.length - 1) / 2) * f.size * 1.1)); g.restore(); }
     else if (L.center) { const f = TY.fit(g, L.center, R * 3, 44 * u, 'PuHui-Heavy', { maxLines: 1, min: 0.6 });   // 有图：名字放到下方白胶囊里
@@ -147,16 +153,17 @@ function drawLevel(c, k, t, ctx) {
     for (const nd of L.nodes) {
       const l = ctx.lt(t, nd.q.at); if (l <= 0) continue;
       const on = hNow && hNow.node === nd, a = 1 - 0.65 * dimK * (on ? 0 : 1);
-      const pop = MO.backOut(clamp(l / 0.5), 1.1), fy = 0, nr = 46 * u * pop * (on ? 1 + 0.15 * dimK : 1);
+      const pop = MO.backOut(clamp(l / 0.5), 1.1), fy = l > 0.5 ? MO.float(t, 7 * u, 3.4, nd.i * 1.9) * clamp((l - 0.5) / 0.6) : 0, nr = 46 * u * pop * (on ? 1 + 0.15 * dimK : 1);
       g.save(); g.globalAlpha = a;
       if (!PL) TOON.glow(g, nd.x, nd.y + fy, nr * (on ? 4.2 : 2.6), nd.col, on ? 0.7 : 0.45);
       TOON.flat(g, TOON.circle(nd.x, nd.y + fy, nr), nd.col, dark(nd.col), PL ? light(nd.col) : '#ffffff', [-8 * u, -8 * u], [-3 * u, -3 * u]);
+      if (l < 1.0) { const rp = clamp(l / 0.9); g.save(); g.globalAlpha = (1 - rp) * 0.55 * a; g.strokeStyle = nd.col; g.lineWidth = 4 * u * (1 - rp); g.beginPath(); g.arc(nd.x, nd.y + fy, nr * (1.1 + rp * 1.5), 0, 7); g.stroke(); g.restore(); }
       if (flow) { g.font = `${30 * u * pop}px "PuHui-Heavy"`; g.fillStyle = PL ? PAL.on(nd.col, [PL.surface, PL.ink, PL.bg]) : P.pillInk; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(nd.i + 1), nd.x, nd.y + fy + 2 * u); }
       const gone = L.exit ? 1 - clamp((t - L.exit.at) / 0.2) : 1;   // 钻进去时：推进一开始这一层的标签全收掉（不然被放大成半屏白块，邻居的也会）
       const lp = MO.backOut(clamp((l - 0.15) / 0.5), 1.1) * gone; if (lp > 0) {
         const sc = lp * (on ? 1 + 0.18 * dimK : 1);
-        const lf = TY.fit(g, nd.q.text || '', ctx.W * 0.44 - 56 * u, (ctx.portrait ? 44 : 38) * u, 'PuHui-Medium', { maxLines: 1 });   // 长标签先缩字号
-        g.font = `${lf.size}px "PuHui-Medium"`; const tw = g.measureText(nd.q.text || '').width, bw = tw + 56 * u, bh = 70 * u;
+        const lf = TY.fitFloor(g, nd.q.text || '', ctx.W * 0.44 - 56 * u, (ctx.portrait ? 44 : 38) * u, 'PuHui-Medium', { maxLines: 1, floor: 30 * u }), lab = lf.lines[0] || '';   // 长标签先缩到下限，再截断加「…」，不缩到看不清
+        g.font = `${lf.size}px "PuHui-Medium"`; const tw = g.measureText(lab).width, bw = tw + 56 * u, bh = 70 * u;
         const ly = nd.y + fy + (nd.y < cy - R * 0.5 && ctx.portrait ? -nr - 70 * u : nr + 70 * u);   // 标签放节点下方（竖屏上半圈放上方）
         const z = cam.z || 1, vx0 = cam.x - ctx.W / 2 / z, vx1 = cam.x + ctx.W / 2 / z, hw = bw * sc / 2 + 20 * u / z;   // 当前镜头里看得见的世界范围（慢推会把边上的标签推出画）
         const lx = nd.x > vx0 && nd.x < vx1 ? (vx1 - vx0 > 2 * hw ? clamp(nd.x, vx0 + hw, vx1 - hw) : cam.x) : nd.x;   // 节点在画里，标签就夹回画里
@@ -164,7 +171,7 @@ function drawLevel(c, k, t, ctx) {
         g.fillStyle = P.shadow; g.beginPath(); g.roundRect(-bw / 2 + 6 * u, -bh / 2 + 8 * u, bw, bh, bh / 2); g.fill();
         g.fillStyle = P.pill; g.beginPath(); g.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2); g.fill();
         if (on) { g.strokeStyle = nd.col; g.lineWidth = 5 * u * dimK; g.stroke(); }
-        g.fillStyle = P.pillInk; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(nd.q.text || '', 0, 2 * u);
+        g.fillStyle = P.pillInk; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(lab, 0, 2 * u);
       }
       g.restore();
     }
